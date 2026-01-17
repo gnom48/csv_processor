@@ -13,3 +13,11 @@ TIME_DB_HOST=timescale
 ```sh
 docker-compose up --build -d 
 ```
+
+### Для запуска тестов:
+1. Перейти в /Testing
+
+2. Выполнить:
+```sh
+dotnet test
+```
