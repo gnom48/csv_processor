@@ -1,0 +1,35 @@
+services:
+  timescale-db:
+    image: timescale/timescaledb:2.18.0-pg16
+    shm_size: 8g
+    container_name: timescale-db
+    environment:
+      POSTGRES_DB: "csv"
+      POSTGRES_USER: ${TIME_DB_USER}
+      POSTGRES_PASSWORD: ${TIME_DB_PASS}
+      PGDATA: "/var/lib/postgresql/data/pgdata"
+    volumes:
+      - ./tms:/var/lib/postgresql/data
+    ports:
+      - 127.0.0.1:${TIME_DB_PORT}:5432
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ./WebApi
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    container_name: api
+    depends_on:
+      timescale-db:
+        condition: service_started
+    environment:
+      ASPNETCORE_ENVIRONMENT: "Development"
+      ConnectionStrings__DefaultConnection: "Host=${TIME_DB_HOST};Port=${TIME_DB_PORT};Database=csv;User Id=${TIME_DB_USER};Password=${TIME_DB_PASS};Timeout=300;CommandTimeout=300;MaxPoolSize=2048;"
+    ports:
+     - 10030:8080
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
