@@ -26,7 +26,7 @@ namespace CsvProcessor.Migrations
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     filename = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
                     upload_time = table.Column<DateTime>(type: "timestamp with time zone", nullable: true, defaultValueSql: "CURRENT_TIMESTAMP"),
-                    processing_status = table.Column<bool>(type: "boolean", nullable: true, defaultValue: false)
+                    processing_status = table.Column<byte>(type: "smallint", nullable: true, defaultValue: (byte)2)
                 },
                 constraints: table =>
                 {
@@ -39,18 +39,24 @@ namespace CsvProcessor.Migrations
                 {
                     id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    file_name = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
+                    file_id = table.Column<int>(type: "integer", nullable: true),
                     delta_seconds = table.Column<TimeSpan>(type: "interval", nullable: true),
                     start_time = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    average_execution_time = table.Column<decimal>(type: "numeric", nullable: true),
-                    average_value = table.Column<decimal>(type: "numeric", nullable: true),
-                    median_value = table.Column<decimal>(type: "numeric", nullable: true),
-                    max_value = table.Column<decimal>(type: "numeric", nullable: true),
-                    min_value = table.Column<decimal>(type: "numeric", nullable: true)
+                    average_execution_time = table.Column<double>(type: "double precision", nullable: true),
+                    average_value = table.Column<double>(type: "double precision", nullable: true),
+                    median_value = table.Column<double>(type: "double precision", nullable: true),
+                    max_value = table.Column<double>(type: "double precision", nullable: true),
+                    min_value = table.Column<double>(type: "double precision", nullable: true)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("results_pkey", x => x.id);
+                    table.ForeignKey(
+                        name: "values_file_id_fkey",
+                        column: x => x.file_id,
+                        principalTable: "files",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -58,8 +64,8 @@ namespace CsvProcessor.Migrations
                 columns: table => new
                 {
                     date = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    execution_time = table.Column<decimal>(type: "numeric", nullable: false),
-                    value = table.Column<decimal>(type: "numeric", nullable: false),
+                    execution_time = table.Column<double>(type: "double precision", nullable: false),
+                    value = table.Column<double>(type: "double precision", nullable: false),
                     file_id = table.Column<int>(type: "integer", nullable: true)
                 },
                 constraints: table =>
@@ -79,15 +85,9 @@ namespace CsvProcessor.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "idx_results_file_name",
+                name: "IX_results_file_id",
                 table: "results",
-                column: "file_name");
-
-            migrationBuilder.CreateIndex(
-                name: "results_file_name_key",
-                table: "results",
-                column: "file_name",
-                unique: true);
+                column: "file_id");
 
             migrationBuilder.CreateIndex(
                 name: "idx_values_date",

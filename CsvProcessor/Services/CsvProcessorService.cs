@@ -1,4 +1,3 @@
-using System.Globalization;
 using CsvProcessor.Exceprtons;
 using CsvProcessor.Models.DbModels;
 using Microsoft.EntityFrameworkCore;
@@ -12,9 +11,11 @@ public class CsvProcessorService(
 {
     private Models.DbModels.File? currentFile = null;
 
-    public async Task<int> ProcessInputFile(Stream fileStream, string filename = "file", char separator = ';')
+    public async Task<int> ProcessInputFile(StreamReader reader, string filename, char separator = ';')
     {
         int counter = 0;
+
+        reader.BaseStream.Seek(0, SeekOrigin.Begin);
 
         try
         {
@@ -28,51 +29,50 @@ public class CsvProcessorService(
             double minValue = double.PositiveInfinity, maxValue = double.NegativeInfinity;
             List<double> valuesForMedian = new List<double>();
 
-            using (var reader = new StreamReader(fileStream))
+            string? line;
+            while ((line = await reader.ReadLineAsync()) != null)
             {
-                string? line;
-                while ((line = await reader.ReadLineAsync()) != null)
-                {
-                    if (line == null) break;
+                if (line == null) break;
 
-                    var parts = line.Split(separator);
+                var parts = line.Split(separator);
 
-                    var valueItem = MapAndThrowIfInvalid(parts);
-                    batch.Add(valueItem);
+                var valueItem = Validations.MapAndThrowIfInvalid(parts);
+                valueItem.FileId = currentFile?.Id
+                    ?? throw new ValidationException("Не указан файл.");
+                batch.Add(valueItem);
 
-                    #region statistics
+                #region statistics
 
-                    if (firstDate == null || valueItem.Date < firstDate)
-                        firstDate = valueItem.Date;
-                    if (lastDate == null || valueItem.Date > lastDate)
-                        lastDate = valueItem.Date;
+                if (firstDate == null || valueItem.Date < firstDate)
+                    firstDate = valueItem.Date;
+                if (lastDate == null || valueItem.Date > lastDate)
+                    lastDate = valueItem.Date;
 
-                    sumExecutionTime += valueItem.ExecutionTime;
-                    sumValue += valueItem.PointerValue;
+                sumExecutionTime += valueItem.ExecutionTime;
+                sumValue += valueItem.PointerValue;
 
-                    minExecutionTime = Math.Min(minExecutionTime, valueItem.ExecutionTime);
-                    maxExecutionTime = Math.Max(maxExecutionTime, valueItem.ExecutionTime);
+                minExecutionTime = Math.Min(minExecutionTime, valueItem.ExecutionTime);
+                maxExecutionTime = Math.Max(maxExecutionTime, valueItem.ExecutionTime);
 
-                    minValue = Math.Min(minValue, valueItem.PointerValue);
-                    maxValue = Math.Max(maxValue, valueItem.PointerValue);
+                minValue = Math.Min(minValue, valueItem.PointerValue);
+                maxValue = Math.Max(maxValue, valueItem.PointerValue);
 
-                    valuesForMedian.Add(valueItem.PointerValue);
+                valuesForMedian.Add(valueItem.PointerValue);
 
-                    #endregion statistics
+                #endregion statistics
 
-                    if (batch.Count >= 1000)
-                    {
-                        await SaveBatchAsync(batch);
-                        counter += batch.Count;
-                        batch.Clear();
-                    }
-                }
-
-                if (batch.Any())
+                if (batch.Count >= 1000)
                 {
                     await SaveBatchAsync(batch);
                     counter += batch.Count;
+                    batch.Clear();
                 }
+            }
+
+            if (batch.Any())
+            {
+                await SaveBatchAsync(batch);
+                counter += batch.Count;
             }
 
             #region statistics calc
@@ -84,7 +84,7 @@ public class CsvProcessorService(
                 StartTime = firstDate!.Value,
                 AverageExecutionTime = sumExecutionTime / counter,
                 AverageValue = sumValue / counter,
-                MedianValue = CalculateMedian(valuesForMedian),
+                MedianValue = Validations.CalculateMedian(valuesForMedian),
                 MaxValue = maxValue,
                 MinValue = minValue
             };
@@ -98,15 +98,15 @@ public class CsvProcessorService(
                 .Where(x => x.Id == currentFile.Id)
                 .ExecuteUpdateAsync(x => x.SetProperty(p => p.ProcessingStatus, ProcessingStatus.Success));
         }
-        catch (ValidationException)
+        catch (ValidationException ex)
         {
-            logger.LogError("Выявлена ошибка формата файла");
+            logger.LogError(ex, "Выявлена ошибка формата файла");
             await RollbackFileAsync();
             throw;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            logger.LogError("Непредвиденная ошибка при обработке файла");
+            logger.LogError(ex, "Непредвиденная ошибка при обработке файла");
             await RollbackFileAsync();
             throw new ProcessException();
         }
@@ -126,63 +126,18 @@ public class CsvProcessorService(
         {
             Filename = filename,
             ProcessingStatus = ProcessingStatus.Processing,
-            UploadTime = DateTime.Now
+            UploadTime = DateTime.UtcNow
         };
         dbContext.Files.Add(currentFile);
         await dbContext.SaveChangesAsync();
     }
 
-    private Value MapAndThrowIfInvalid(string[] rowParts)
-    {
-        if (rowParts.Length != 3)
-            throw new ValidationException("Некорректный формат строки CSV.");
-
-        var dateStr = rowParts[0];
-        var execTimeStr = rowParts[1];
-        var valueStr = rowParts[2];
-
-        if (string.IsNullOrWhiteSpace(dateStr) ||
-            string.IsNullOrWhiteSpace(execTimeStr) ||
-            string.IsNullOrWhiteSpace(valueStr))
-            throw new ValidationException("Отсутствуют обязательные поля в строке.");
-
-        if (!DateTime.TryParseExact(dateStr, "yyyy-MM-ddTHH:mm:ss.FFFFFFFK", CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal, out var parsedDate))
-            throw new ValidationException("Неверный формат даты.");
-
-        var nowUtc = DateTime.UtcNow;
-        if (parsedDate < new DateTime(2000, 1, 1) || parsedDate > nowUtc)
-            throw new ValidationException("Недопустимое значение даты.");
-
-        if (!double.TryParse(execTimeStr, NumberStyles.Float, CultureInfo.InvariantCulture, out double execTime))
-            throw new ValidationException("Неверный формат времени выполнения.");
-
-        if (execTime < 0)
-            throw new ValidationException("Время выполнения не может быть отрицательным.");
-
-        if (!double.TryParse(valueStr, NumberStyles.Float, CultureInfo.InvariantCulture, out double value))
-            throw new ValidationException("Неверный формат значения показателя.");
-
-        if (value < 0)
-            throw new ValidationException("Значение показателя не может быть отрицательным.");
-
-        return new Value
-        {
-            Date = parsedDate,
-            ExecutionTime = execTime,
-            PointerValue = value,
-            FileId = currentFile?.Id ?? throw new ValidationException("Не указан файл.")
-        };
-    }
-
     private async Task SaveBatchAsync(List<Value> batch)
     {
-        using (var transaction = dbContext.Database.BeginTransaction())
-        {
-            dbContext.Values.AddRange(batch);
-            await dbContext.SaveChangesAsync();
-            transaction.Commit();
-        }
+        dbContext.Values.AddRange(batch);
+        await dbContext.SaveChangesAsync();
     }
+
     private async Task RollbackFileAsync()
     {
         if (currentFile != null)
@@ -192,17 +147,5 @@ public class CsvProcessorService(
                 .ExecuteDeleteAsync();
             logger.LogError("Откат");
         }
-    }
-
-    private static double CalculateMedian(IEnumerable<double> numbers)
-    {
-        var sortedNumbers = numbers.OrderBy(n => n).ToArray();
-        int count = sortedNumbers.Length;
-        if (count == 0) return 0;
-
-        if (count % 2 == 1)
-            return sortedNumbers[count / 2];
-        else
-            return (sortedNumbers[(count - 1) / 2] + sortedNumbers[count / 2]) / 2;
     }
 }

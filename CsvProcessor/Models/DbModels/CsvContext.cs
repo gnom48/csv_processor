@@ -19,9 +19,9 @@ public partial class CsvContext : DbContext
 
     public virtual DbSet<Value> Values { get; set; }
 
-    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
-        => optionsBuilder.UseNpgsql("host=localhost;database=csv;username=postgres;password=tkPkU9RoqSN5hxtfK0;port=10020");
+//     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+// #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
+//         => optionsBuilder.UseNpgsql("host=localhost;database=csv;username=postgres;password=tkPkU9RoqSN5hxtfK0;port=10020");
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -35,7 +35,9 @@ public partial class CsvContext : DbContext
 
             entity.HasIndex(e => e.Filename, "files_filename_key").IsUnique();
 
-            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.Id)
+                .HasColumnName("id")
+                .ValueGeneratedOnAdd();
             entity.Property(e => e.Filename)
                 .HasMaxLength(255)
                 .HasColumnName("filename");
@@ -72,9 +74,9 @@ public partial class CsvContext : DbContext
 
         modelBuilder.Entity<Value>(entity =>
         {
-            entity
-                .HasNoKey()
-                .ToTable("values");
+            entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedOnAdd();
+
+            entity.ToTable("values");
 
             entity.HasIndex(e => e.Date, "idx_values_date");
 

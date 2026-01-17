@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CsvProcessor.Migrations
 {
     [DbContext(typeof(CsvContext))]
-    [Migration("20260116095906_Init")]
-    partial class Init
+    [Migration("20260117170042_id")]
+    partial class id
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -26,6 +26,7 @@ namespace CsvProcessor.Migrations
             NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "timescaledb");
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.HasSequence("chunk_constraint_name", "_timescaledb_catalog");
 
             modelBuilder.Entity("CsvProcessor.Models.DbModels.File", b =>
                 {
@@ -42,10 +43,10 @@ namespace CsvProcessor.Migrations
                         .HasColumnType("character varying(255)")
                         .HasColumnName("filename");
 
-                    b.Property<bool?>("ProcessingStatus")
+                    b.Property<byte?>("ProcessingStatus")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false)
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((byte)2)
                         .HasColumnName("processing_status");
 
                     b.Property<DateTime?>("UploadTime")
@@ -72,34 +73,32 @@ namespace CsvProcessor.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<decimal?>("AverageExecutionTime")
-                        .HasColumnType("numeric")
+                    b.Property<double?>("AverageExecutionTime")
+                        .HasColumnType("double precision")
                         .HasColumnName("average_execution_time");
 
-                    b.Property<decimal?>("AverageValue")
-                        .HasColumnType("numeric")
+                    b.Property<double?>("AverageValue")
+                        .HasColumnType("double precision")
                         .HasColumnName("average_value");
 
                     b.Property<TimeSpan?>("DeltaSeconds")
                         .HasColumnType("interval")
                         .HasColumnName("delta_seconds");
 
-                    b.Property<string>("FileName")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)")
-                        .HasColumnName("file_name");
+                    b.Property<int?>("FileId")
+                        .HasColumnType("integer")
+                        .HasColumnName("file_id");
 
-                    b.Property<decimal?>("MaxValue")
-                        .HasColumnType("numeric")
+                    b.Property<double?>("MaxValue")
+                        .HasColumnType("double precision")
                         .HasColumnName("max_value");
 
-                    b.Property<decimal?>("MedianValue")
-                        .HasColumnType("numeric")
+                    b.Property<double?>("MedianValue")
+                        .HasColumnType("double precision")
                         .HasColumnName("median_value");
 
-                    b.Property<decimal?>("MinValue")
-                        .HasColumnType("numeric")
+                    b.Property<double?>("MinValue")
+                        .HasColumnType("double precision")
                         .HasColumnName("min_value");
 
                     b.Property<DateTime?>("StartTime")
@@ -109,31 +108,37 @@ namespace CsvProcessor.Migrations
                     b.HasKey("Id")
                         .HasName("results_pkey");
 
-                    b.HasIndex(new[] { "FileName" }, "idx_results_file_name");
-
-                    b.HasIndex(new[] { "FileName" }, "results_file_name_key")
-                        .IsUnique();
+                    b.HasIndex("FileId");
 
                     b.ToTable("results", (string)null);
                 });
 
             modelBuilder.Entity("CsvProcessor.Models.DbModels.Value", b =>
                 {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
                     b.Property<DateTime>("Date")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("date");
 
-                    b.Property<decimal>("ExecutionTime")
-                        .HasColumnType("numeric")
+                    b.Property<double>("ExecutionTime")
+                        .HasColumnType("double precision")
                         .HasColumnName("execution_time");
 
                     b.Property<int?>("FileId")
                         .HasColumnType("integer")
                         .HasColumnName("file_id");
 
-                    b.Property<decimal>("Value1")
-                        .HasColumnType("numeric")
+                    b.Property<double>("PointerValue")
+                        .HasColumnType("double precision")
                         .HasColumnName("value");
+
+                    b.HasKey("Id");
 
                     b.HasIndex("FileId");
 
@@ -143,6 +148,17 @@ namespace CsvProcessor.Migrations
                         .IsDescending();
 
                     b.ToTable("values", (string)null);
+                });
+
+            modelBuilder.Entity("CsvProcessor.Models.DbModels.Result", b =>
+                {
+                    b.HasOne("CsvProcessor.Models.DbModels.File", "File")
+                        .WithMany()
+                        .HasForeignKey("FileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .HasConstraintName("values_file_id_fkey");
+
+                    b.Navigation("File");
                 });
 
             modelBuilder.Entity("CsvProcessor.Models.DbModels.Value", b =>

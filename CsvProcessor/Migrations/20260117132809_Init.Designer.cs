@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CsvProcessor.Migrations
 {
     [DbContext(typeof(CsvContext))]
-    [Migration("20260116195136_UpdateResults-Files")]
-    partial class UpdateResultsFiles
+    [Migration("20260117132809_Init")]
+    partial class Init
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -73,12 +73,12 @@ namespace CsvProcessor.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<decimal?>("AverageExecutionTime")
-                        .HasColumnType("numeric")
+                    b.Property<double?>("AverageExecutionTime")
+                        .HasColumnType("double precision")
                         .HasColumnName("average_execution_time");
 
-                    b.Property<decimal?>("AverageValue")
-                        .HasColumnType("numeric")
+                    b.Property<double?>("AverageValue")
+                        .HasColumnType("double precision")
                         .HasColumnName("average_value");
 
                     b.Property<TimeSpan?>("DeltaSeconds")
@@ -89,16 +89,16 @@ namespace CsvProcessor.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("file_id");
 
-                    b.Property<decimal?>("MaxValue")
-                        .HasColumnType("numeric")
+                    b.Property<double?>("MaxValue")
+                        .HasColumnType("double precision")
                         .HasColumnName("max_value");
 
-                    b.Property<decimal?>("MedianValue")
-                        .HasColumnType("numeric")
+                    b.Property<double?>("MedianValue")
+                        .HasColumnType("double precision")
                         .HasColumnName("median_value");
 
-                    b.Property<decimal?>("MinValue")
-                        .HasColumnType("numeric")
+                    b.Property<double?>("MinValue")
+                        .HasColumnType("double precision")
                         .HasColumnName("min_value");
 
                     b.Property<DateTime?>("StartTime")

@@ -5,6 +5,8 @@ namespace CsvProcessor.Models.DbModels;
 
 public partial class Value
 {
+    public int Id { get; set; }
+    
     public DateTime Date { get; set; }
 
     public double ExecutionTime { get; set; }
