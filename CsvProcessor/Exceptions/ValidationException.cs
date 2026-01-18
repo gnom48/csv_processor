@@ -1,6 +1,10 @@
+using CsvProcessor.Exceptions;
+
 namespace CsvProcessor.Exceprtons;
 
-public class ValidationException(string msg) : Exception
+public class ValidationException : BaseMsgException
 {
-    public string Msg { get; } = msg;
+    public ValidationException(string msg) : base(msg)
+    {
+    }
 }

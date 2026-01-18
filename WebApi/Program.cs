@@ -1,4 +1,5 @@
 using CsvProcessor;
+using WebApi.Middleware;
 
 namespace WebApi
 {
@@ -18,9 +19,11 @@ namespace WebApi
 
             if (app.Environment.IsDevelopment())
             {
-                
+
             }
 
+            app.UseMiddleware<ErrorHandlingMiddleware>();
+            
             app.UseHttpsRedirection();
 
             app.UseAuthorization();

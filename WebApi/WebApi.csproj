@@ -20,4 +20,8 @@
     <ProjectReference Include="..\CsvProcessor\CsvProcessor.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Middleware\" />
+  </ItemGroup>
+
 </Project>
