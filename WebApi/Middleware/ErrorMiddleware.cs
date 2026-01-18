@@ -1,4 +1,6 @@
+using System.Text.Json;
 using CsvProcessor.Exceptions;
+using WebApi.Models.Dto;
 
 namespace WebApi.Middleware;
 
@@ -19,23 +21,34 @@ public class ErrorHandlingMiddleware
         }
         catch (BaseMsgException ex)
         {
-            HandleInternalException(context, ex);
+            await HandleInternalException(context, ex);
         }
         catch (Exception ex)
         {
-            HandleUnknownException(context, ex);
+            await HandleUnknownException(context, ex);
         }
     }
 
-    private async void HandleInternalException(HttpContext context, BaseMsgException ex)
+    private async Task HandleInternalException(HttpContext context, BaseMsgException ex)
     {
         context.Response.StatusCode = StatusCodes.Status400BadRequest;
-        await context.Response.WriteAsync($"{ex.GetType().Name}: {ex.Msg} ({ex.Message})");
+        context.Response.ContentType = "application/json";
+
+        await context.Response.WriteAsync(JsonSerializer.Serialize(new ErrorResponseDto
+        {
+            Msg = $"{ex.GetType().Name}: {ex.Msg}",
+            Detail = ex.Message
+        }));
     }
 
-    private async void HandleUnknownException(HttpContext context, Exception ex)
+    private async Task HandleUnknownException(HttpContext context, Exception ex)
     {
         context.Response.StatusCode = StatusCodes.Status500InternalServerError;
-        await context.Response.WriteAsync($"Упс) неизвестная ошибка: {ex.GetType().Name} (содержимое ошибка см. логи)");
+        context.Response.ContentType = "application/json";
+
+        await context.Response.WriteAsync(JsonSerializer.Serialize(new ErrorResponseDto
+        {
+            Msg = $"Упс) неизвестная ошибка: {ex.GetType().Name} (содержимое ошибка см. логи)"
+        }));
     }
 }
