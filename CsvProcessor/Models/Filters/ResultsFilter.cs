@@ -4,6 +4,7 @@ namespace CsvProcessor.Models.Filters;
 
 public class ResultFilter
 {
+    [JsonRequired]
     public string Filename { get; set; } = null!;
     public DateTime? StartTimeFrom { get; set; }
     public DateTime? StartTimeTo { get; set; }

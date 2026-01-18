@@ -7,7 +7,7 @@ namespace CsvProcessor.Services;
 public class DbService(
     CsvContext dbContext)
 {
-    public async Task<IEnumerable<Result>> GetResultsFiltredAsync(ResultFilter filter)
+    public async Task<IEnumerable<Result>?> GetResultsFiltredAsync(ResultFilter filter)
     {
         var query = dbContext.Results.AsQueryable();
 
