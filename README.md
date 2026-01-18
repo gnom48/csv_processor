@@ -5,8 +5,8 @@
 ```
 TIME_DB_USER=postgres
 TIME_DB_PASS=tkPkU9RoqSN5hxtfK0
-TIME_DB_PORT=10020
-TIME_DB_HOST=timescale
+TIME_DB_PORT=5432
+TIME_DB_HOST=timescale-db
 ```
 
 2. Выполнить:
